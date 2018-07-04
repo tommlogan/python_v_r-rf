@@ -1,4 +1,4 @@
-data/
+*.csv
 venv
 .Rhistory
 *.whl

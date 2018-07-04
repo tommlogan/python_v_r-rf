@@ -11,7 +11,7 @@ library(data.table)
 library(tictoc)
 library(parallel)
 
-DATA_PATH = 'data/data.csv'
+DATA_PATH = 'data/data_zeroinflate.csv'
 MODEL_NAME_PATH = 'data/predictions/model_names.csv'
 HOLDOUT_NUM = 10
 SEED = 15
@@ -44,11 +44,10 @@ ImportData <- function(){
   # Import processed data ---------------------------------------------------
   data <- read.csv(DATA_PATH)
 
-  # ignore some variables
-  data <- data[,-which(names(data) %in% c('x6','x7','x9','x10'))]
-  # Factor variables
-  data[,c('x48', 'x49','x50','x51','x52','x53','x54')] <- lapply(data[, c('x48', 'x49','x50','x51','x52','x53','x54')], as.factor)
-
+  if (DATA_PATH=='data/data_zeroinflate.csv'){
+    # Factor variables
+    data[,c('x48', 'x49','x50','x51','x52','x53','x54')] <- lapply(data[, c('x48', 'x49','x50','x51','x52','x53','x54')], as.factor)
+  }
   return(data)
 }
 

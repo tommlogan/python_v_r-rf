@@ -61,11 +61,12 @@ def import_data():
     data = pd.read_csv(DATA_PATH)
 
     # drop columns
-    data = data.drop(['x6','x7','x9','x10'], axis=1)
-    # convert categorical variables
-    var_cat = ['x48', 'x49','x50','x51','x52','x53','x54']
-    for v in var_cat:
-        data[v] = pd.factorize(data[v])[0]
+    # data = data.drop(['x6','x7','x9','x10'], axis=1)
+    if DATA_PATH == 'data/data_zeroinflate.csv':
+        # convert categorical variables
+        var_cat = ['x48', 'x49','x50','x51','x52','x53','x54']
+        for v in var_cat:
+            data[v] = pd.factorize(data[v])[0]
 
     return(data)
 
