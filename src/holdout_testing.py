@@ -16,12 +16,12 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import time
 import code
-# from statsmodels.stats.outliers_influence import variance_inflation_factor
-
+import optunity
+import optunity.metrics
 
 # define constants
-DATA_PATH = 'data/data.csv'
-MODEL_NAME_PATH = 'data/predictions/model_names.csv'
+DATA_PATH = 'data/data_zeroinflate.csv'
+TIME_PATH = 'data/time_elapsed.csv'
 HOLDOUT_NUM = 10
 SEED = 15
 CORES_NUM = 10 #min(25,int(os.cpu_count()))
@@ -35,28 +35,24 @@ def main():
     data = import_data()
 
     # create the holdout datasets
-    create_holdouts()
+    # create_holdouts(data)
 
     # models to test
-    models = [random_forest_default, random_forest_Rparams, random_forest_rsearch, gradient_boost_rf]
+    models = [rf_pso]#[py_rf_default]#, py_rf_Rparams, random_forest_rsearch, gradient_boost_rf]
+    for model in models:
+        # cross validation
+        elapsed = cross_validation(data, model)
+        print("time to run {} holdouts in python: {} min".format(HOLDOUT_NUM, elapsed/60))
 
-    # cross validation
-    t = time.time()
-    cross_validation(data, models)
-    elapsed = time.time() - t
-    print("time to run {} holdouts in python: {} min".format(HOLDOUT_NUM, elapsed/60))
+        # write time elapsed
+        file_exists = os.path.isfile(TIME_PATH)
+        header = ['Language','Model','Time']
+        with open(TIME_PATH, 'a') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(header)
+            writer.writerow(['Python', models[0].__name__, elapsed])
 
-    # compare results
-    evaluation = evaluate_models()
-
-    # plot comparison of models
-    evaluation = pd.pivot_table(evaluation, index=['model', 'holdout'], columns='measure', values='value')
-    evaluation.boxplot(by=['model'], rot = 90)
-    plt.show()
-
-    # save results to csv
-    evaluation_mean = evaluation.groupby(['model']).mean()
-    evaluation_mean.to_csv('data/model_performance-thresh0-000001.csv')
 
 
 def import_data():
@@ -64,11 +60,12 @@ def import_data():
     # import data
     data = pd.read_csv(DATA_PATH)
 
+    # drop columns
+    data = data.drop(['x6','x7','x9','x10'], axis=1)
     # convert categorical variables
-    data['x6'] = pd.factorize(data['x6'])[0]
-    data['x7'] = pd.factorize(data['x7'])[0]
-    data['x9'] = pd.factorize(data['x9'])[0]
-    data['x10'] = pd.factorize(data['x10'])[0]
+    var_cat = ['x48', 'x49','x50','x51','x52','x53','x54']
+    for v in var_cat:
+        data[v] = pd.factorize(data[v])[0]
 
     return(data)
 
@@ -81,7 +78,6 @@ def create_holdouts(data):
     skfolds = ShuffleSplit(n_splits=HOLDOUT_NUM, random_state=SEED, test_size=0.2)
     # list of indices
     fold_indices = list(skfolds.split(data, data[RESPONSE_VAR]))
-    fold_indices_iterated = [(fold_indices[i][0], fold_indices[i][1], i) for i in range(HOLDOUT_NUM)]
 
     # make a boolean list where it is one if it's in the training set, column number is the holdout Number
     row_nums = pd.DataFrame(dict.fromkeys(range(HOLDOUT_NUM),[False] * len(data)))
@@ -92,27 +88,31 @@ def create_holdouts(data):
     row_nums.to_csv('data/holdout_indices.csv')
 
 
-def cross_validation(train, models):
+def cross_validation(train, model):
     '''
         divide the data into the training and validating sets
         train and test the models specified in the models list
         input: data frame, list of model functions, random_state variable
         return predictive accuracy
     '''
-    # divide the data
-    skfolds = ShuffleSplit(n_splits=HOLDOUT_NUM, random_state=SEED, test_size=0.2)
+    # import the data divisions
+    train_indices = pd.read_csv('data/holdout_indices.csv')
     # create this list of indices with a dummy variable to act as the iterator for saving results
-    fold_indices = list(skfolds.split(train, train[RESPONSE_VAR]))
-    fold_indices_iterated = [(fold_indices[i][0], fold_indices[i][1], i) for i in range(HOLDOUT_NUM)]
+    fold_indices_iterated = []
+    for i in range(HOLDOUT_NUM):
+        fold_indices_iterated += [(np.where(train_indices[str(i)])[0], np.where(train_indices[str(i)]==False)[0], i)]
     # parallelize the cross-validation
+    t = time.time()
     if PAR:
-        Parallel(n_jobs=CORES_NUM)(delayed(model_cross_validate)(train, models, train_index, test_index, cv_num) for train_index, test_index, cv_num in fold_indices_iterated)
+        Parallel(n_jobs=CORES_NUM)(delayed(model_cross_validate)(train, model, train_index, test_index, cv_num) for train_index, test_index, cv_num in fold_indices_iterated)
     else:
         for train_index, test_index, cv_num in fold_indices_iterated:
-            model_cross_validate(train, models, train_index, test_index, cv_num)
+            model_cross_validate(train, model, train_index, test_index, cv_num)
+
+    return(time.time() - t)
 
 
-def model_cross_validate(train, models, train_index, test_index, cv_num):
+def model_cross_validate(train, model, train_index, test_index, cv_num):
     # divide the data, then train on multiple models
     # split data
     x_train, y_train, x_valid, y_valid = k_fold_data(train, train_index, test_index)
@@ -121,30 +121,22 @@ def model_cross_validate(train, models, train_index, test_index, cv_num):
     predictions = y_valid.as_matrix()
     predictions = np.expand_dims(predictions, axis=1)
     predictions_names = ['y_valid']
-    model_names = []
 
     # fit models
-    for model in models:
-        # model name
-        model_name = model.__name__
-        model_names += [model_name]
-        # train model and return predictions
-        results = model(x_train, y_train, x_valid)
-        if len(results.shape) == 1:
-            results = np.reshape(results, (len(results),1))
-        # append predictive probabilities to np.array
-        predictions = np.append(predictions, results, axis=1)
-        # append column headings
-        predictions_names += [model_name]
+    # model name
+    model_name = model.__name__
+    # train model and return predictions
+    results = model(x_train, y_train, x_valid)
+    if len(results.shape) == 1:
+        results = np.reshape(results, (len(results),1))
+    # append predictive probabilities to np.array
+    predictions = np.append(predictions, results, axis=1)
+    # append column headings
+    predictions_names += [model_name]
 
     # save result to csv
     results_table = pd.DataFrame(data=predictions, columns=predictions_names)
-    results_table.to_csv('data/predictions/py_{}.csv'.format(cv_num))
-    # save model names
-    if cv_num == 1:
-        with open(MODEL_NAME_PATH, 'w') as myfile:
-            wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-            wr.writerow(model_names)
+    results_table.to_csv('data/predictions/{}_py_{}.csv'.format(model_name,cv_num))
 
 
 def k_fold_data(train, train_index, test_index):
@@ -153,85 +145,22 @@ def k_fold_data(train, train_index, test_index):
     y_train = train[RESPONSE_VAR].iloc[train_index]
     x_valid = train.iloc[test_index]
     y_valid = train[RESPONSE_VAR].iloc[test_index]
-
+    #
     # drop y from x
     x_train = x_train.drop(RESPONSE_VAR, axis=1)
     x_valid = x_valid.drop(RESPONSE_VAR, axis=1)
-
+    #
     return(x_train, y_train, x_valid, y_valid)
-
-
-def evaluate_models():
-    '''
-        assigns predictions to classes
-        calculates performance metrics
-        plots results
-    '''
-    # model names
-    with open(MODEL_NAME_PATH, 'r') as myfile:
-        reader = csv.reader(myfile)
-        model_names = list(reader)[0]
-    # import predictions
-    predictions = get_predictions(model_names)
-    # evaluate predictions with performance measures
-    evaluation = evaluate_predictions(predictions)
-    return(evaluation)
-
-
-def get_predictions(model_names):
-    # from the saved results, compile into single dictionary
-    # init prediction probability dictionary
-    predictions = {model_name: dict() for model_name in model_names}
-    predictions['y_valid'] = dict()
-    # convert probabilistic predictions to class predictions
-    for i in range(HOLDOUT_NUM):
-        # import csv
-        results = pd.read_csv('data/predictions/py_{}.csv'.format(i))
-        # get the actual results
-        predictions['y_valid'][i] = results['y_valid'].as_matrix()
-        # get the prediction probabilities for each model
-        for model_name in model_names:
-            predictions[model_name][i] = results[model_name].as_matrix()
-    return(predictions)
-
-
-def evaluate_predictions(predictions):
-    # evaluate the predictions
-    # init the evaluation dataframe
-    eval_cols = ['value', 'model', 'measure', 'holdout']
-    evaluation = pd.DataFrame(columns = eval_cols)
-    # loop through models in the predictions (note it needs to be in the predictions, so i can add thresholds and update names later)
-    model_names = list(predictions.keys()); model_names.remove('y_valid')
-    for model_name in model_names:
-        # loop through the recorded holdouts
-        for i in predictions[model_name].keys():
-            # pull the prediction and actual
-            y_valid = predictions['y_valid'][i]
-            y_pred = predictions[model_name][i]
-            # calculate some of the performance measures and add to evaluation dataframe
-            measures = list()
-            # mean square error
-            square_error = (y_valid - y_pred)**2
-            measures.append([square_error.mean(), model_name, 'MSE', i])
-
-            # mean absolute error
-            absolute_error = np.abs(y_valid - y_pred)
-            measures.append([absolute_error.mean(), model_name, 'MAE', i])
-
-            # append to dataframe
-            evaluation = evaluation.append(pd.DataFrame(measures, columns = eval_cols), ignore_index=True)
-            code.interact(local=locals())
-    return(evaluation)
 
 
 '''
 Model functions
 '''
 
-def random_forest_default(x_train, y_train, x_valid):
+def py_rf_default(x_train, y_train, x_valid):
     # Random forest
     # train
-    forest_reg = RandomForestRegressor(random_state=SEED)#, n_estimators=500, max_features=1/3)
+    forest_reg = RandomForestRegressor(random_state=SEED)
     forest_reg.fit(x_train, y_train)
     # validate
     y_pred = forest_reg.predict(x_valid)
@@ -239,7 +168,7 @@ def random_forest_default(x_train, y_train, x_valid):
     return(y_pred)
 
 
-def random_forest_Rparams(x_train, y_train, x_valid):
+def py_rf_rParams(x_train, y_train, x_valid):
     # Random forest
     # train
     forest_reg = RandomForestRegressor(random_state=SEED, n_estimators=500, max_features=1/3)
@@ -250,36 +179,68 @@ def random_forest_Rparams(x_train, y_train, x_valid):
     return(y_pred)
 
 
-def random_forest_rsearch(x_train, y_train, x_valid):
+def rf_randomsearch(x_train, y_train, x_valid):
     # Random forest
     # train
-    forest_clf = RandomForestClassifier(random_state=SEED)
-    param_grid = {'n_estimators': [3, 100, 300, 500], 'max_features': [1/3, 2, 5, 8]}
-    forest_grid = RandomizedSearchCV(forest_clf, param_grid, cv=5, scoring='accuracy')
-    forest_grid.fit(x_train, y_train)
+    forest_reg = RandomForestRegressor(random_state=SEED)
+    param_grid = {'n_estimators': [3, 100, 300, 500], 'max_features': 0.2, 0.4, 0.6, 0.8, 1]}
+    reg = RandomizedSearchCV(forest_reg, param_grid, cv=5, scoring='neg_mean_absolute_error')
+    reg.fit(x_train, y_train)
     # validate
-    y_pred = forest_grid.predict_proba(x_valid)
+    y_pred = reg.predict(x_valid)
+    # return predictive probabilities
+    return(y_pred)
+
+def rf_pso(x_train, y_train, x_valid):
+    # Random forest using particle swarm opt on the hyperparameters
+    # pso
+    x_train = x_train.as_matrix()
+    y_train = y_train.as_matrix()
+    @optunity.cross_validated(x=x_train, y=y_train, num_iter=2, num_folds=5)
+    def performance(x_train, y_train, x_test, y_test,n_estimators, max_features):
+        model = RandomForestRegressor(n_estimators=int(n_estimators),
+                                       max_features=max_features)
+        model.fit(x_train, y_train)
+        predictions = model.predict(x_test)
+        return(optunity.metrics.mse(y_test, predictions))
+    # hyperparameter search
+    optimal_pars, _, _ = optunity.minimize(performance, num_evals = 100, n_estimators=[10,800], max_features=[0.2,10])
+    # train
+    forest_reg = RandomForestRegressor(random_state=SEED, **optimal_pars)
+    reg.fit(x_train, y_train)
+    # validate
+    y_pred = reg.predict(x_valid)
     # return predictive probabilities
     return(y_pred)
 
 
-def random_forest_grid(x_train, y_train, x_valid):
-    # Random forest
+def rf_gridsearch(x_train, y_train, x_valid):
+    # Random forest using grid search
     # train
-    forest_clf = RandomForestClassifier(random_state=SEED)
-    param_grid = {'n_estimators': [3, 250, 500], 'max_features': [1/3, 2, 5, 8]}
-    forest_grid = GridSearchCV(forest_clf, param_grid, cv=5, scoring='accuracy')
+    forest_reg = RandomForestRegressor(random_state=SEED)
+    param_grid = {'n_estimators': [3, 250, 500], 'max_features': [0.2, 0.4, 0.6, 0.8, 1]}
+    forest_grid = GridSearchCV(forest_reg, param_grid, cv=5, scoring='mean_absolute_error')
     forest_grid.fit(x_train, y_train)
     # validate
-    y_pred = forest_grid.predict_proba(x_valid)
+    y_pred = forest_grid.predict(x_valid)
     # return predictive probabilities
     return(y_pred)
 
 
-def gradient_boost_rf(x_train, y_train, x_valid):
-    # Random forest
+def gbm_rf_plus(x_train, y_train, x_valid):
+    # Gradient Boosting Random Forest
     # train
-    gbm_reg = GradientBoostingRegressor(max_depth=2, random_state=RANDOM_SEED, learning_rate=0.1, n_estimators=500, loss='ls')
+    gbm_reg = GradientBoostingRegressor(max_depth=2, random_state=SEED, learning_rate=0.1, n_estimators=500, loss='ls')
+    gbm_reg.fit(x_train, y_train)
+    # validate
+    y_pred = gbm_reg.predict(x_valid)
+    # return predictive probabilities
+    return(y_pred)
+
+def gbm_rf_default(x_train, y_train, x_valid):
+    # Gradient Boosting Random Forest
+    # train
+    gbm_reg = GradientBoostingRegressor(random_state=SEED)
     gbm_reg.fit(x_train, y_train)
     # validate
     y_pred = gbm_reg.predict(x_valid)
@@ -291,7 +252,7 @@ def xgboost_rf(x_train, y_train, x_valid):
     # Random forest
     from xgboost import XGBRegressor
     # train
-    gbm_reg = XGBRegressor(random_state=RANDOM_SEED)
+    gbm_reg = XGBRegressor(random_state=SEED)
     gbm_reg.fit(x_train, y_train)
     # validate
     y_pred = gbm_reg.predict(x_valid)
