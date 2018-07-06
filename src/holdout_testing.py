@@ -69,7 +69,9 @@ def import_data():
         var_cat = ['x48', 'x49','x50','x51','x52','x53','x54']
         for v in var_cat:
             data[v] = pd.factorize(data[v])[0]
-
+    else:
+        data = data.apply(pd.to_numeric)
+        data = data.dropna()
     return(data)
 
 
