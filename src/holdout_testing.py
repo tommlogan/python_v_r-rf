@@ -38,7 +38,7 @@ def main():
     create_holdouts(data)
 
     # models to test
-    models = [py_rf_default]#[py_rf_rParams, rf_randomsearch, gbm_rf_default, gbm_rf_rParams, xgboost_rf ] #, py_rf_Rparams, random_forest_rsearch, gradient_boost_rf]
+    models = [py_rf_rParams, rf_randomsearch, gbm_rf_default, gbm_rf_rParams, xgboost_rf ] #[py_rf_default]#, py_rf_Rparams, random_forest_rsearch, gradient_boost_rf]
     for model in models:
         # cross validation
         elapsed = cross_validation(data, model)
