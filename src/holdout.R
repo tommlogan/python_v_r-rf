@@ -43,6 +43,7 @@ main <- function(){
 ImportData <- function(){
   # Import processed data ---------------------------------------------------
   data <- read.csv(DATA_PATH)
+  data <- data[complete.cases(data),]
 
   if (DATA_PATH=='data/data_zeroinflate.csv'){
     # Factor variables
