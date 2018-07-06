@@ -20,7 +20,7 @@ import code
 
 
 # define constants
-DATA_PATH = 'data/data_lst.csv'
+DATA_PATH = 'data/data_zeroinflate.csv'
 TIME_PATH = 'data/time_elapsed_lst.csv'
 HOLDOUT_NUM = 10
 SEED = 15
