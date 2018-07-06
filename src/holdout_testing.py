@@ -14,14 +14,14 @@ from sklearn.linear_model import SGDClassifier, LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neural_network import MLPClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from xgboost import XGBRegressor
 import time
 import code
-import optunity
-import optunity.metrics
+
 
 # define constants
-DATA_PATH = 'data/data_zeroinflate.csv'
-TIME_PATH = 'data/time_elapsed.csv'
+DATA_PATH = 'data/data_lst.csv'
+TIME_PATH = 'data/time_elapsed_lst.csv'
 HOLDOUT_NUM = 10
 SEED = 15
 CORES_NUM = 10 #min(25,int(os.cpu_count()))
@@ -38,7 +38,7 @@ def main():
     # create_holdouts(data)
 
     # models to test
-    models = [rf_pso]#[py_rf_default]#, py_rf_Rparams, random_forest_rsearch, gradient_boost_rf]
+    models = [py_rf_default]#[py_rf_rParams, rf_randomsearch, gbm_rf_default, gbm_rf_rParams, xgboost_rf ] #, py_rf_Rparams, random_forest_rsearch, gradient_boost_rf]
     for model in models:
         # cross validation
         elapsed = cross_validation(data, model)
@@ -184,13 +184,14 @@ def rf_randomsearch(x_train, y_train, x_valid):
     # Random forest
     # train
     forest_reg = RandomForestRegressor(random_state=SEED)
-    param_grid = {'n_estimators': [3, 100, 300, 500], 'max_features': 0.2, 0.4, 0.6, 0.8, 1]}
+    param_grid = {'n_estimators': [10, 100, 250, 500, 750, 1000], 'max_features': [0.2, 0.4, 0.6, 0.8, 1]}
     reg = RandomizedSearchCV(forest_reg, param_grid, cv=5, scoring='neg_mean_absolute_error')
     reg.fit(x_train, y_train)
     # validate
     y_pred = reg.predict(x_valid)
     # return predictive probabilities
     return(y_pred)
+
 
 def rf_pso(x_train, y_train, x_valid):
     # Random forest using particle swarm opt on the hyperparameters
@@ -228,10 +229,10 @@ def rf_gridsearch(x_train, y_train, x_valid):
     return(y_pred)
 
 
-def gbm_rf_plus(x_train, y_train, x_valid):
+def gbm_rf_rParams(x_train, y_train, x_valid):
     # Gradient Boosting Random Forest
     # train
-    gbm_reg = GradientBoostingRegressor(max_depth=2, random_state=SEED, learning_rate=0.1, n_estimators=500, loss='ls')
+    gbm_reg = GradientBoostingRegressor(max_depth=5, random_state=SEED, learning_rate=0.1, n_estimators=500, loss='ls')
     gbm_reg.fit(x_train, y_train)
     # validate
     y_pred = gbm_reg.predict(x_valid)
@@ -251,9 +252,9 @@ def gbm_rf_default(x_train, y_train, x_valid):
 
 def xgboost_rf(x_train, y_train, x_valid):
     # Random forest
-    from xgboost import XGBRegressor
+
     # train
-    gbm_reg = XGBRegressor(random_state=SEED)
+    gbm_reg = XGBRegressor(random_state=SEED, n_estimators=500)
     gbm_reg.fit(x_train, y_train)
     # validate
     y_pred = gbm_reg.predict(x_valid)

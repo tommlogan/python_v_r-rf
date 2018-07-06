@@ -1,9 +1,5 @@
 # packages and libraries --------------------------------------------------
-require(gam)
-require(tree)
-require(earth)
 options(java.parameters = "-Xmx16g")
-require(bartMachine)
 require(randomForest)
 require(gbm)
 library(pbapply)
@@ -11,7 +7,7 @@ library(data.table)
 library(tictoc)
 library(parallel)
 
-DATA_PATH = 'data/data_zeroinflate.csv'
+DATA_PATH = 'data/data_lst.csv'#zeroinflate.csv'
 MODEL_NAME_PATH = 'data/predictions/model_names.csv'
 HOLDOUT_NUM = 10
 SEED = 15
@@ -30,12 +26,16 @@ main <- function(){
 
   # holdout
   time.elapsed <- Cross.Validation(data)
-  
+
   # append time
-  write.table(c('R', MODEL, time.elapsed), 'data/time_elapsed.csv', append=T)
-  
+  write.table(t(c('R', MODEL, time.elapsed)), 'data/time_elapsed_lst.csv', append=T, sep=',', row.names=F, col.names=F)
+
   # train and save model
-  rf <- randomForst(y~.,data=data, ntree=10, mtry=1.0)
+  if (MODEL=='r_rf_pyParams'){
+    rf <- randomForest(y~.,data=data, ntree=10, mtry=1.0)
+  } else if (MODEL=='r_rf_default'){
+    rf <- randomForest(y~.,data=data)
+  }
   saveRDS(rf, paste0('data/models/',MODEL,'.rds'))
 }
 
@@ -54,7 +54,7 @@ ImportData <- function(){
 
 Cross.Validation <- function(data){
   # Initializing ------------------------------------------------------------
-  
+
   # Import the data divisions
   train.indices <- read.csv('data/holdout_indices.csv')
   train.indices <- train.indices[,-1]
@@ -86,8 +86,11 @@ Model.Cross.Validation <- function(i){
   # train the models
   # https://cran.r-project.org/web/packages/randomForest/randomForest.pdf
   # http://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
-  rf <- randomForest(y~.,data=train)
-  # rf <- randomForest(y~.,data=train, ntree=10, mtry=1.0)
+  if (MODEL=='r_rf_pyParams'){
+    rf <- randomForest(y~.,data=train, ntree=10, mtry=1.0)
+  } else if (MODEL=='r_rf_default'){
+    rf <- randomForest(y~.,data=train)
+  }
 
   # predictions
   yhat <- invisible(predict(rf, newdata = test, type= "response"))
