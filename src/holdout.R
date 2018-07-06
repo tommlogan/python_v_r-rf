@@ -42,15 +42,16 @@ main <- function(){
 
 ImportData <- function(){
   # Import processed data ---------------------------------------------------
-  data <- read.csv(DATA_PATH)
+  data <- read.csv(DATA_PATH, stringsAsFactors=FALSE)
   data <- data[complete.cases(data),]
 
   if (DATA_PATH=='data/data_zeroinflate.csv'){
     # Factor variables
-    data[,c('x48', 'x49','x50','x51','x52','x53','x54')] <- lapply(data[, c('x48', 'x49','x50','x51','x52','x53','x54')], as.factor)
+    data[,c('data', 'x49','x50','x51','x52','x53','x54')] <- lapply(data[, c('x48', 'x49','x50','x51','x52','x53','x54')], as.factor)
   } else if (DATA_PATH=='data/data_lst.csv') {
     # all numeric
-    data <- sapply( data, as.numeric )
+    data <- as.data.frame(sapply( data, as.numeric ))
+    data <- data[complete.cases(data),]
   }
 
   return(data)
