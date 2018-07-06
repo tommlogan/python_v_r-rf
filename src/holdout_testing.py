@@ -35,7 +35,7 @@ def main():
     data = import_data()
 
     # create the holdout datasets
-    # create_holdouts(data)
+    create_holdouts(data)
 
     # models to test
     models = [py_rf_default]#[py_rf_rParams, rf_randomsearch, gbm_rf_default, gbm_rf_rParams, xgboost_rf ] #, py_rf_Rparams, random_forest_rsearch, gradient_boost_rf]
@@ -59,6 +59,8 @@ def import_data():
     # import the data and separate the test and train
     # import data
     data = pd.read_csv(DATA_PATH)
+
+    data = data.dropna()
 
     # drop columns
     # data = data.drop(['x6','x7','x9','x10'], axis=1)
