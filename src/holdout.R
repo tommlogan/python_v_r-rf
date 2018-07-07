@@ -16,8 +16,8 @@ CORES_NUM = 10 #min(25,int(os.cpu_count()))
 PAR = TRUE
 RESPONSE_VAR = 'y'
 
-#MODEL <- 'r_rf_pyParams'
-MODEL <- 'r_rf_default'
+MODEL <- 'r_rf_pyParams'
+#MODEL <- 'r_rf_default'
 
 main <- function(){
 
