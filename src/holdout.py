@@ -20,7 +20,7 @@ import code
 
 
 # define constants
-DATA_PATH = 'data/data.csv'
+DATA_PATH = 'data/data_lst.csv'
 MODEL_NAME_PATH = 'data/predictions/model_names.csv'
 HOLDOUT_NUM = 10
 SEED = 15

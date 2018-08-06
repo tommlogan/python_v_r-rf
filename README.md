@@ -2,7 +2,10 @@
 Tom Logan  
 tomlogan.co.nz
 
-Both R and Python have tools for predictive modelling. R is a traditional tool for statisticians, but Python is potentially faster. I'm going to do answer two questions:
+I heard recently that statisticians still favor R over Python because they're suspicious of Python's accuracy.
+I doubt it.
+But there's an easy way to check.
+I'm going to answer three questions:
 1. For comparable predictive algorithms, which of the two languages runs faster.
 2. Are the predictions similar between the languages?
 3. Does variable importance and partial dependence change?

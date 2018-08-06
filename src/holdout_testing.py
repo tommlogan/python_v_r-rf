@@ -51,7 +51,7 @@ def main():
             writer = csv.writer(f)
             if not file_exists:
                 writer.writerow(header)
-            writer.writerow(['Python', models[0].__name__, elapsed])
+            writer.writerow(['Python', model.__name__, elapsed])
 
 
 
