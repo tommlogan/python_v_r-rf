@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # df columns: actual, predicted, model_name, holdout
 df = pd.DataFrame()
 
-dataset = 'zeroinflate'
+dataset = 'lst'
 
 dir_results = 'results/{}/predictions/'.format(dataset)
 
@@ -82,7 +82,7 @@ sns.boxplot(x='model', y='absolute_error', data=df_mean)
 plt.ylabel('Mean Absolute Error')
 plt.xlabel('')
 locs = plt.xticks()
-plt.xticks(locs[0],('GBM','Py RF\n(Py_param)','Py RF\n(R_param)', 'R RF\n(R_param)', 'Py RF\n(Py_param)', 'XGBoost'),rotation=0)
+plt.xticks(locs[0],('GBM','Py RF\n(Py_param)','Py RF\n(R_param)', 'R RF\n(R_param)', 'R RF\n(Py_param)', 'XGBoost'),rotation=0)
 plt.title('Predictive accuracy between models: {}'.format(dataset))
 if dataset=='lst':
     plt.ylim([0,0.5])

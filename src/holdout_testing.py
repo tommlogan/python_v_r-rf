@@ -18,10 +18,11 @@ from xgboost import XGBRegressor
 import time
 import code
 
+dataset = 'lst'
 
 # define constants
-DATA_PATH = 'data/data_zeroinflate.csv'
-TIME_PATH = 'data/time_elapsed_lst.csv'
+DATA_PATH = 'data/data_{}.csv'.format(dataset)
+TIME_PATH = 'data/time_elapsed_{}.csv'.format(dataset)
 HOLDOUT_NUM = 10
 SEED = 15
 CORES_NUM = 10 #min(25,int(os.cpu_count()))

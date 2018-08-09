@@ -1,13 +1,13 @@
 # packages and libraries --------------------------------------------------
 options(java.parameters = "-Xmx16g")
 require(randomForest)
-require(gbm)
+# require(gbm)
 library(pbapply)
 library(data.table)
 library(tictoc)
 library(parallel)
 
-DATA_PATH = 'data/data_zeroinflate.csv'
+DATA_PATH = paste0('data/data_',dataset,'.csv')
 MODEL_NAME_PATH = 'data/predictions/model_names.csv'
 HOLDOUT_NUM = 10
 SEED = 15
@@ -15,9 +15,10 @@ set.seed(SEED)
 CORES_NUM = 10 #min(25,int(os.cpu_count()))
 PAR = TRUE
 RESPONSE_VAR = 'y'
+dataset = 'forestfires'
 
-MODEL <- 'r_rf_pyParams'
-#MODEL <- 'r_rf_default'
+# MODEL <- 'r_rf_pyParams'
+MODEL <- 'r_rf_default'
 
 main <- function(){
 
@@ -25,10 +26,10 @@ main <- function(){
   data <- ImportData()
 
   # holdout
-  time.elapsed <- Cross.Validation(data)
-
-  # append time
-  write.table(t(c('R', MODEL, time.elapsed)), 'data/time_elapsed_lst.csv', append=T, sep=',', row.names=F, col.names=F)
+  # time.elapsed <- Cross.Validation(data)
+  # 
+  # # append time
+  # write.table(t(c('R', MODEL, time.elapsed)), 'data/time_elapsed_lst.csv', append=T, sep=',', row.names=F, col.names=F)
 
   # train and save model
   if (MODEL=='r_rf_pyParams'){
@@ -52,6 +53,8 @@ ImportData <- function(){
     # all numeric
     data <- as.data.frame(sapply( data, as.numeric ))
     data <- data[complete.cases(data),]
+  } else {
+    # data[,c('y','job','marital','education','default','housing','loan','contact','month')] <- lapply(data[, c('y')], as.factor)
   }
 
   return(data)
