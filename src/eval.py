@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # df columns: actual, predicted, model_name, holdout
 df = pd.DataFrame()
 
-dataset = 'lst'
+dataset = 'zeroinflate'
 
 dir_results = 'results/{}/predictions/'.format(dataset)
 
@@ -73,16 +73,22 @@ df['absolute_error'] = abs(df['actual'] - df['predict'])
 # plt.savefig('fig/ae_{}.pdf'.format(dataset), format='pdf', dpi=1000, transparent=True)
 # plt.clf()
 
+# reorder
+# df = df.loc[:,[3, 2, 1, 4, 0, 5]]
+
+
 # accuracy
 df_mean = df[['holdout','model','absolute_error']].groupby(['holdout','model']).mean()
 df_mean = df_mean.reset_index(level=['holdout', 'model'])
-
+# import code
+# code.interact(local=locals())
 # plot
-sns.boxplot(x='model', y='absolute_error', data=df_mean)
+sns.boxplot(x='model', y='absolute_error', data=df_mean,
+    order=['rf_r_default','rf_py_rparam','rf_py_default','rf_r_pyparam','gbm_rf_default','xgboost_rf'])
 plt.ylabel('Mean Absolute Error')
 plt.xlabel('')
 locs = plt.xticks()
-plt.xticks(locs[0],('GBM','Py RF\n(Py_param)','Py RF\n(R_param)', 'R RF\n(R_param)', 'R RF\n(Py_param)', 'XGBoost'),rotation=0)
+plt.xticks(locs[0],('R RF\n(R_param)','Py RF\n(R_param)','Py RF\n(Py_param)','R RF\n(Py_param)', 'GBM', 'XGBoost'),rotation=0)
 plt.title('Predictive accuracy between models: {}'.format(dataset))
 if dataset=='lst':
     plt.ylim([0,0.5])

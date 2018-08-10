@@ -38,7 +38,7 @@ if (DATA_PATH=='data/data_zeroinflate.csv'){
 }
 
 # importance plot
-jpeg(paste0("fig/varimp_R_",dataset,".jpg"), width = 1280, height = 960, units = "px", pointsize=18)
+jpeg(paste0("fig/varimp_R_",dataset,".jpg"))#, width = 460, height = 350, units = "px", pointsize=15)
 varImpPlot(rf, type=2, main=paste0('R Feature Importance: ',dataset))
 
 dev.off()
@@ -48,7 +48,7 @@ dev.off()
 imp = importance(rf)
 imp_vars = rownames(imp)[order(imp,decreasing = T)[1:4]]
 
-jpeg(paste0("fig/pdp_R_",dataset,".jpg"), width = 1280, height = 960, units = "px", pointsize=18)
+jpeg(paste0("fig/pdp_R_",dataset,".jpg"))#, width = 460, height = 350, units = "px", pointsize=15)
 op <- par(mfrow=c(2, 2))
 for (i in seq_along(imp_vars)){
   partialPlot(rf, data, imp_vars[i], xlab=imp_vars[i],
